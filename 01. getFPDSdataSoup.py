@@ -26,24 +26,8 @@ outFilename = 'data/FPDS-NIA-P20C-' + ts + '.xlsx'
 
 
 # %%
-#Set up dataframe for storage of information collected
-columnNames = [
-               'vendorName',
-               'DUNSNumber',
-               'cageCode',
-               'obligatedAmount',
-               'descriptionOfContractRequirement',
-               'fundingRequestingAgencyID_name',
-               'productOrServiceCode',
-               'productOrServiceCode_description',
-               'principalNAICSCode',
-               'principalNAICSCode_description',
-               'placeOfPerformanceZIPCode',
-               'extentCompeted',
-               'solicitationProcedures'
-              ]
 
-df = pd.DataFrame(columns=columnNames)
+df = pd.DataFrame()
 
 
 #%%
@@ -54,8 +38,8 @@ df = pd.DataFrame(columns=columnNames)
 i = 0
 
 # set number of records to retrieve
-numRecords=15
-#numRecords="all"
+#numRecords=9
+numRecords="all"
 
 while numRecords == "all" or i < numRecords:
     # form the query url
@@ -68,33 +52,41 @@ while numRecords == "all" or i < numRecords:
     # create soup object for extracting data
     soup = BeautifulSoup(response.text,"xml")
     # get an iterable object for each FPDS record
-    entries = soup.find_all('entry')
+    awards = soup.find_all('award')
 
     # iterate through each entry and populate the dataframe
-    for e in range(len(entries)): 
-        if entries[e].award != None :
-            awardDict = {
-                'vendorName' : entries[e].vendor.find('vendorName').text,
-                'DUNSNumber' : entries[e].vendor.find('DUNSNumber').text,
-                'cageCode' : entries[e].vendor.find('cageCode').text,
-                'obligatedAmount' : float(entries[e].obligatedAmount.text),
-                'descriptionOfContractRequirement' : entries[e].descriptionOfContractRequirement.text,
-                'fundingRequestingAgencyID_name' : entries[e].fundingRequestingAgencyID['name'],
-                'effectiveDate' : pd.to_datetime(entries[e].effectiveDate.text, format = '%Y-%m-%d %H:%M:%S' ),
-                'productOrServiceCode' :  entries[e].productOrServiceInformation.productOrServiceCode.text,
-                'productOrServiceCode_description':  entries[e].productOrServiceInformation.productOrServiceCode['description'],
-                'principalNAICSCode': entries[e].productOrServiceInformation.principalNAICSCode.text,
-                'placeOfPerformanceZIPCode' : entries[e].placeOfPerformance.placeOfPerformanceZIPCode.text[0:5],
-                'principalNAICSCode_description':  entries[e].productOrServiceInformation.principalNAICSCode['description'],
-                'extentCompeted' : entries[e].competition.extentCompeted['description'],
-                'solicitationProcedures' : entries[e].competition.solicitationProcedures['description']
+    for a in range(len(awards)): 
+        awardDict = {
+                'vendorName' : awards[a].vendor.vendorName.text if awards[a].vendor.vendorName is not None else "",
+                'DUNSNumber' : awards[a].vendor.DUNSNumber.text if awards[a].vendor.DUNSNumber is not None else "",
+                'cageCode' : awards[a].vendor.cageCode.text if awards[a].vendor.cageCode is not None else "",
+                'obligatedAmount' : float(awards[a].obligatedAmount.text) if awards[a].obligatedAmount is not None else "",
+                'baseAndExercisedOptionsValue' : float(awards[a].baseAndExercisedOptionsValue.text) if awards[a].baseAndExercisedOptionsValue is not None else "",
+                'totalObligatedAmount' : float(awards[a].totalObligatedAmount.text) if awards[a].totalObligatedAmount is not None else "",
+                'totalBaseAndExercisedOptionsValue' : float(awards[a].totalBaseAndExercisedOptionsValue.text) if awards[a].totalBaseAndExercisedOptionsValue is not None else "",
+                'totalBaseAndAllOptionsValue' : float(awards[a].totalBaseAndAllOptionsValue.text) if awards[a].totalBaseAndAllOptionsValue is not None else "",
+                'descriptionOfContractRequirement' : awards[a].descriptionOfContractRequirement.text if awards[a].descriptionOfContractRequirement is not None else "",
+                'contractingOfficeAgencyID_name' : awards[a].contractingOfficeAgencyID['name'] if awards[a].contractingOfficeAgencyID is not None else "",
+                'contractingOfficeID_name' : awards[a].contractingOfficeID['name'] if awards[a].contractingOfficeID is not None else "",
+                'fundingRequestingAgencyID_name' : awards[a].fundingRequestingAgencyID['name'] if awards[a].fundingRequestingAgencyID is not None else "",
+                'effectiveDate' : pd.to_datetime(awards[a].effectiveDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].effectiveDate is not None else "",
+                'signedDate' : pd.to_datetime(awards[a].signedDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].signedDate is not None else "",
+                'createdDate' : pd.to_datetime(awards[a].transactionInformation.createdDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].transactionInformation.createdDate is not None else "" ,
+                'lastModifiedDate' : pd.to_datetime(awards[a].transactionInformation.lastModifiedDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].transactionInformation.lastModifiedDate is not None else "" ,
+                'productOrServiceCode' :  awards[a].productOrServiceInformation.productOrServiceCode.text if awards[a].productOrServiceInformation.productOrServiceCode is not None else "",
+                'productOrServiceCode_description':  awards[a].productOrServiceInformation.productOrServiceCode['description'] if awards[a].productOrServiceInformation.productOrServiceCode is not None else "",
+                'principalNAICSCode': awards[a].productOrServiceInformation.principalNAICSCode.text if awards[a].productOrServiceInformation.principalNAICSCode is not None else "",
+                'placeOfPerformanceZIPCode' : awards[a].placeOfPerformance.placeOfPerformanceZIPCode.text[0:5] if awards[a].placeOfPerformance.placeOfPerformanceZIPCode is not None else "",
+                'principalNAICSCode_description':  awards[a].productOrServiceInformation.principalNAICSCode['description'] if awards[a].productOrServiceInformation.principalNAICSCode is not None else "",
+                'extentCompeted' : awards[a].competition.extentCompeted['description'] if awards[a].competition.extentCompeted is not None else "",
+                'solicitationProcedures' : awards[a].competition.solicitationProcedures['description'] if awards[a].competition.solicitationProcedures is not None else ""
                 }
-
-            df = df.append(
-                awardDict,
-                ignore_index=True
-                )
-
+        df = df.append(
+            awardDict,
+            ignore_index=True
+            )
+    if len(soup.find_all('entry')) < 10:
+        break
     # set the &start= value for the next query
     i += 10
 
