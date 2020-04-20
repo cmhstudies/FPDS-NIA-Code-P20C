@@ -10,6 +10,12 @@ import time
 import datetime
 import pandas as pd
 
+import gspread
+from google.oauth2 import service_account
+from google.auth.transport.requests import AuthorizedSession
+
+
+
 # %%
 # Set up queries
 feedURL = "https://www.fpds.gov/ezsearch/FEEDS/ATOM?FEEDNAME=PUBLIC&q="
@@ -18,8 +24,9 @@ feedSize = 10
 #qLastModDateEnd = "2020/04/25"
 #queryString = 'NATIONAL_INTEREST_CODE:P20C'
 # note: query returns values included in the start and finish dates, i.e <= and >=
-# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/05,2020/04/08]'
-queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/09,2020/04/17]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/03/01,2020/03/31]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/01,2020/04/15]'
+queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/16,2020/04/18]'
 
 #%%
 # set filenames
@@ -43,7 +50,7 @@ df = pd.DataFrame()
 i = 0
 
 # set number of records to retrieve
-#numRecords=9
+# numRecords=9
 numRecords="all"
 
 while numRecords == "all" or i < numRecords:
@@ -59,7 +66,6 @@ while numRecords == "all" or i < numRecords:
         print(f'sleeping')
         time.sleep(30)
         print(f'try again')
-        response = requests.get(url, verify = False)
     except requests.exceptions.HTTPError as http_err:
         print(f'HTTP Error Occurred: {http_err}')
     except requests.exceptions.ConnectionError as conn_err:
@@ -67,13 +73,11 @@ while numRecords == "all" or i < numRecords:
         print(f'sleeping')
         time.sleep(30)
         print(f'try again')
-        response = requests.get(url, verify = False)
     except requests.exceptions.RetryError as retry_err:
         print(f'HTTP Error Occurred: {retry_err}')
         print(f'sleeping')
         time.sleep(300)
         print(f'try again')
-        response = requests.get(url, verify = False)
     else:
         queryURL = response.url
         print("Successfully retreived: {0}".format(queryURL))
@@ -96,10 +100,15 @@ while numRecords == "all" or i < numRecords:
                     'referencedIDVID_PIID' : awards[a].referencedIDVID.PIID.text if awards[a].referencedIDVID is not None else "",
                     'referencedIDVID_modNumber' : awards[a].referencedIDVID.modNumber.text if awards[a].referencedIDVID is not None else "",
                     # relevantContractDates
-                    'effectiveDate' : pd.to_datetime(awards[a].effectiveDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].effectiveDate is not None else "",
-                    'signedDate' : pd.to_datetime(awards[a].signedDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].signedDate is not None else "",
-                    'createdDate' : pd.to_datetime(awards[a].transactionInformation.createdDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].transactionInformation.createdDate is not None else "" ,
-                    'lastModifiedDate' : pd.to_datetime(awards[a].transactionInformation.lastModifiedDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].transactionInformation.lastModifiedDate is not None else "" ,
+                    # removed 'to_datetime' while troubleshooting load to gsheet
+                    'effectiveDate' : awards[a].effectiveDate.text if awards[a].effectiveDate is not None else "",
+                    'signedDate' : awards[a].signedDate.text if awards[a].signedDate is not None else "",
+                    'createdDate' : awards[a].transactionInformation.createdDate.text if awards[a].transactionInformation.createdDate is not None else "" ,
+                    'lastModifiedDate' : awards[a].transactionInformation.lastModifiedDate.text if awards[a].transactionInformation.lastModifiedDate is not None else "" ,
+                    # 'effectiveDate' : pd.to_datetime(awards[a].effectiveDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].effectiveDate is not None else "",
+                    # 'signedDate' : pd.to_datetime(awards[a].signedDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].signedDate is not None else "",
+                    # 'createdDate' : pd.to_datetime(awards[a].transactionInformation.createdDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].transactionInformation.createdDate is not None else "" ,
+                    # 'lastModifiedDate' : pd.to_datetime(awards[a].transactionInformation.lastModifiedDate.text, format = '%Y-%m-%d %H:%M:%S' ) if awards[a].transactionInformation.lastModifiedDate is not None else "" ,
                     # dollarValues
                     'obligatedAmount' : float(awards[a].obligatedAmount.text) if awards[a].obligatedAmount is not None else "",
                     'baseAndExercisedOptionsValue' : float(awards[a].baseAndExercisedOptionsValue.text) if awards[a].baseAndExercisedOptionsValue is not None else "",
@@ -331,9 +340,34 @@ while numRecords == "all" or i < numRecords:
         # set the &start= value for the next query
 
         i += 10
+# %%
+# set up connection to google sheet at
+# https://docs.google.com/spreadsheets/d/1uSGzyM49Nc1VnGwpIfxk2Q17skDOS3oVbX91seRgMdE
+
+credentials = service_account.Credentials.from_service_account_file('creds/nationalinterestaction-b4b2350191ef.json')
+
+# %%
+scoped_credentials = credentials.with_scopes(
+        ['https://spreadsheets.google.com/feeds',
+         'https://www.googleapis.com/auth/drive']
+        )
+
+# %%
+gc = gspread.Client(auth=scoped_credentials)
+
+# %%
+gc.session = AuthorizedSession(scoped_credentials)
+# %%
+sheet = gc.open_by_key('1uSGzyM49Nc1VnGwpIfxk2Q17skDOS3oVbX91seRgMdE')
+# %%
+body = {'values': df.values.tolist()}
+
+# %%
+sheet.values_append('Sheet1!A1', {'valueInputOption': 'USER_ENTERED'}, body )
 
 # %%
 with pd.ExcelWriter(outFilename, mode = 'w') as f:
     df.to_excel(f, index=False)
+
 
 # %%
