@@ -9,6 +9,7 @@ import requests
 import time
 import datetime
 import pandas as pd
+import re
 
 import gspread
 from google.oauth2 import service_account
@@ -26,7 +27,8 @@ feedSize = 10
 # note: query returns values included in the start and finish dates, i.e <= and >=
 # queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/03/01,2020/03/31]'
 # queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/01,2020/04/15]'
-queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/16,2020/04/18]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/16,2020/04/19]'
+queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/20,2020/04/23]'
 
 #%%
 # set filenames
@@ -41,6 +43,19 @@ outFilename = 'data/FPDS-NIA-P20C-' + ts + '.xlsx'
 
 df = pd.DataFrame()
 
+# %%
+# find out how many records in this run
+url = feedURL + queryString + '&start=0' 
+try: 
+    response = requests.get(url, verify = False)
+    response.raise_for_status()
+except:
+    print('first call error')
+else:
+    soup = BeautifulSoup(response.text,"xml")
+    lastCall = soup.find(rel='last')
+    lastRecordAt = [x for x in lastCall['href'].split("&") if re.search('start', x)]
+    numRecords = int(lastRecordAt[0].split("=")[-1]) + 1
 
 #%%
 # initialize values for looping through multiple ATOM feed calls
@@ -49,11 +64,8 @@ df = pd.DataFrame()
 # sets the url's &start= value
 i = 0
 
-# set number of records to retrieve
-# numRecords=9
-numRecords="all"
 
-while numRecords == "all" or i < numRecords:
+while i < numRecords:
     # form the query url
     url = feedURL + queryString + '&start='+ str(i) 
     print("querying {0}".format(url))
