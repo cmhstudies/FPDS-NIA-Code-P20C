@@ -28,7 +28,20 @@ feedSize = 10
 # queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/03/01,2020/03/31]'
 # queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/01,2020/04/15]'
 # queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/16,2020/04/19]'
-queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/20,2020/04/23]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/20,2020/04/23]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/24,2020/04/28]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/04/29,2020/05/02]'
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/03,2020/05/04]' done 2020-05-09 1002
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/05,2020/05/05]' done 2020-05-10 1002
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/06,2020/05/10]' done 2020-05-10
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/11,2020/05/15]' done 2020-05-17
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/16,2020/05/23]' done 2020-05-28 at 0925
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/24,2020/05/30]' done 2020-06-08 at 1115
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/05/31,2020/06/07]' done 2020-06-08 at 1148
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/06/08,2020/06/14]' done 2020-06-14 at 0945
+# queryString = 'NATIONAL_INTEREST_CODE:P20C+LAST_MOD_DATE:[2020/06/14,2020/06/20]' done 2020-06-25 at 0906
+
+url = feedURL + queryString + '&start=0' 
 
 #%%
 # set filenames
@@ -45,7 +58,7 @@ df = pd.DataFrame()
 
 # %%
 # find out how many records in this run
-url = feedURL + queryString + '&start=0' 
+
 try: 
     response = requests.get(url, verify = False)
     response.raise_for_status()
@@ -354,23 +367,22 @@ while i < numRecords:
         i += 10
 # %%
 # set up connection to google sheet at
-# https://docs.google.com/spreadsheets/d/1uSGzyM49Nc1VnGwpIfxk2Q17skDOS3oVbX91seRgMdE
+# Original: https://docs.google.com/spreadsheets/d/1uSGzyM49Nc1VnGwpIfxk2Q17skDOS3oVbX91seRgMdE
+# Part 2: 1HeplP0MB09t1er2EH9KkIzxHbp9-o2l4olXxjfca-Xg
+# Part 3: 1Al-t5TRCQE2ursCs4Oo-3oXNla_-8D_AhODz05fuhHs
 
 credentials = service_account.Credentials.from_service_account_file('creds/nationalinterestaction-b4b2350191ef.json')
 
-# %%
 scoped_credentials = credentials.with_scopes(
         ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
         )
 
-# %%
 gc = gspread.Client(auth=scoped_credentials)
-
-# %%
 gc.session = AuthorizedSession(scoped_credentials)
-# %%
-sheet = gc.open_by_key('1uSGzyM49Nc1VnGwpIfxk2Q17skDOS3oVbX91seRgMdE')
+sheet = gc.open_by_key('1Al-t5TRCQE2ursCs4Oo-3oXNla_-8D_AhODz05fuhHs')
+
+
 # %%
 body = {'values': df.values.tolist()}
 
